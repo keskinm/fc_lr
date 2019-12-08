@@ -56,6 +56,30 @@ public:
 
         }
 
+    void fit()
+    {
+    for (int epoch=1; epoch<=epochs; epoch++)
+         {
+         for (std::vector<int> X : array)
+             {
+             std::vector<double> forwards = forwards_(X[0]);
+             double pred = forwards.back();
+             double sig_end = (X[1]-pred)*pred*(1-pred);
+             out_bias = out_bias + lr*sig_end;
+             for (ulong i=0; i<neurons.size(); i++)
+                 {
+                 double delta_end = lr*sig_end*forwards[i];
+                 neurons[i][2] = neurons[i][2] + delta_end;
+
+                 double sig_hidden = forwards[i]*(1-forwards[i])*sig_end*neurons[i][2];
+                 double delta_hidden = lr*sig_hidden;
+                 neurons[i][0] = neurons[i][0] + delta_hidden;
+                 neurons[i][1] = neurons[i][1] +delta_hidden;
+                 }
+              }
+         }
+    }
+
     std::vector<double> forwards_(double input)
     {
         std::vector<double> forwards;
@@ -69,6 +93,7 @@ public:
             {pred += neurons[i][2]*forwards[i]+out_bias;}
         pred = 1/(1+exp(pred));
         forwards.push_back(pred);
+        return forwards;
     }
 
 private:
@@ -84,4 +109,12 @@ private:
 int main()
 {
     GenParabolaData parabola_data = GenParabolaData(-5, 5, 500);
+    FcNn fc_nn = FcNn(1, 5, parabola_data());
+    fc_nn.fit();
+
+    for (std::vector<int> X : parabola_data())
+    {std::vector<double> forwards = fc_nn.forwards_(X[0]);
+     double pred = forwards.back();
+     std::cout << pred << std::endl;
+    }
 }
