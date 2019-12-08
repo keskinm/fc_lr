@@ -4,38 +4,37 @@
 #include <vector>
 #include <math.h>
 
-class GenParabolaData
+class GenSigmoidalData
 {
 public:
-    GenParabolaData(int low, int high, int size)
+    GenSigmoidalData(int low, int high, int size)
     : random_engine_{std::random_device{}()}
     , distribution_{low, high}
 
     {
         for (int j=0 ; j < size; j++)
         {
-            numbers.push_back(std::vector<int>{j, j*j+distribution_(random_engine_)});
+            numbers.push_back(std::vector<double>{double(j), distribution_(random_engine_)/10+(1/(1+exp(-(j*0.001))))});
         }
     }
 
-    std::vector<std::vector<int>> operator()()
+    std::vector<std::vector<double>> operator()()
     {
         return numbers;
     }
 private:
     std::mt19937 random_engine_;
     std::uniform_int_distribution<int> distribution_;
-    std::vector<std::vector<int>> numbers;
+    std::vector<std::vector<double>> numbers;
 };
 
 
 class FcNn
 {
 public:
-    FcNn(int epochs, int n_neurons, std::vector<std::vector<int>> array)
+    FcNn(int epochs, int n_neurons, std::vector<std::vector<double>> array)
     : epochs{epochs}
     , array{array}
-    , weights{std::vector<double>{0.1, 0.1}}
     , lr{0.1}
     , n_neurons{n_neurons}
     , neurons{construct_weights()}
@@ -53,14 +52,13 @@ public:
             neurons.push_back(std::vector<double>{0.1, 0.1, 0.1});
             }
         return neurons;
-
         }
 
     void fit()
     {
     for (int epoch=1; epoch<=epochs; epoch++)
          {
-         for (std::vector<int> X : array)
+         for (std::vector<double> X : array)
              {
              std::vector<double> forwards = forwards_(X[0]);
              double pred = forwards.back();
@@ -85,36 +83,44 @@ public:
         std::vector<double> forwards;
         for (std::vector<double> neuron : neurons)
            {
-            double output = 1/(1+exp(input*neuron[0]+neuron[1]));
+            double output = 1/(1+exp(-(input*neuron[0]+neuron[1])));
             forwards.push_back(output);
            }
         double pred = 0;
         for (ulong i=0 ; i < forwards.size(); i++)
             {pred += neurons[i][2]*forwards[i]+out_bias;}
-        pred = 1/(1+exp(pred));
+        pred = 1/(1+exp(-pred));
         forwards.push_back(pred);
         return forwards;
     }
 
+    void print_preds_vs_gt()
+    {
+
+        for (std::vector<double> X : array)
+        {std::vector<double> forwards = forwards_(X[0]);
+         double pred = forwards.back();
+        std::cout << "input" << X[0] << std::endl;
+        std::cout << "gt" << X[1] << std::endl;
+        std::cout << "pred" << pred << std::endl;
+        std::cout << "" << std::endl;
+    }}
+
 private:
     int epochs;
-    std::vector<std::vector<int>> array;
-    std::vector<double> weights;
+    std::vector<std::vector<double>> array;
     double lr;
     int n_neurons;
     std::vector<std::vector<double>> neurons;
     double out_bias;
 };
 
+
 int main()
 {
-    GenParabolaData parabola_data = GenParabolaData(-5, 5, 500);
-    FcNn fc_nn = FcNn(1, 5, parabola_data());
+    GenSigmoidalData sigmoidal_data = GenSigmoidalData(-5, 5, 50);
+    FcNn fc_nn = FcNn(15, 8, sigmoidal_data());
     fc_nn.fit();
+    fc_nn.print_preds_vs_gt();
 
-    for (std::vector<int> X : parabola_data())
-    {std::vector<double> forwards = fc_nn.forwards_(X[0]);
-     double pred = forwards.back();
-     std::cout << pred << std::endl;
-    }
 }
