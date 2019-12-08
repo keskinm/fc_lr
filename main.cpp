@@ -118,7 +118,7 @@ private:
 
 int main()
 {
-    GenSigmoidalData sigmoidal_data = GenSigmoidalData(-5, 5, 50);
+    GenSigmoidalData sigmoidal_data = GenSigmoidalData(-5, 5, 10);
     FcNn fc_nn = FcNn(15, 8, sigmoidal_data());
     fc_nn.fit();
     fc_nn.print_preds_vs_gt();
