@@ -4,10 +4,10 @@
 #include <vector>
 #include <math.h>
 
-class GenSigmoidalData
+class GenParabolaData
 {
 public:
-    GenSigmoidalData(int low, int high, int size)
+    GenParabolaData(int low, int high, int size)
     : random_engine_{std::random_device{}()}
     , distribution_{low, high}
 
@@ -125,10 +125,10 @@ void print_preds_vs_gt(std::vector<std::vector<double>> data, FcNn fc_nn)
 
 int main()
 {
-    GenSigmoidalData sigmoidal_data = GenSigmoidalData(0, 5, 5);
-    FcNn fc_nn = FcNn(300, 20, sigmoidal_data());
+    GenParabolaData parabola_data = GenParabolaData(0, 5, 5);
+    FcNn fc_nn = FcNn(300, 20, parabola_data());
     fc_nn.fit();
-    GenSigmoidalData test_sigmoidal_data = GenSigmoidalData(0, 5, 5);
-    print_preds_vs_gt(test_sigmoidal_data(), fc_nn);
+    GenParabolaData test_parabola_data = GenParabolaData(0, 5, 5);
+    print_preds_vs_gt(test_parabola_data(), fc_nn);
 
 }
