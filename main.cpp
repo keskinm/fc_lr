@@ -14,7 +14,7 @@ public:
     {
         for (int j=0 ; j < size; j++)
         {
-            numbers.push_back(std::vector<double>{double(j), distribution_(random_engine_)/10+(1/(1+exp(-(j*0.001))))});
+            numbers.push_back(std::vector<double>{double(j), double(j*j)+distribution_(random_engine_)});
         }
     }
 
@@ -47,9 +47,12 @@ public:
     std::vector<std::vector<double>> construct_weights()
         {
         std::vector<std::vector<double>> neurons;
+        std::random_device dev;
+        std::mt19937 rng(dev());
+        std::uniform_int_distribution<std::mt19937::result_type> dist(10,90);
         for (int j=0 ; j < n_neurons; j++)
             {
-            neurons.push_back(std::vector<double>{0.1, 0.1, 0.1});
+            neurons.push_back(std::vector<double>{double(dist(rng))/100, double(dist(rng))/10, double(dist(rng))/100});
             }
         return neurons;
         }
@@ -62,7 +65,7 @@ public:
              {
              std::vector<double> forwards = forwards_(X[0]);
              double pred = forwards.back();
-             double sig_end = (X[1]-pred)*pred*(1-pred);
+             double sig_end = (X[1]-pred)/array.size();
              out_bias = out_bias + lr*sig_end;
              for (ulong i=0; i<neurons.size(); i++)
                  {
@@ -71,8 +74,11 @@ public:
 
                  double sig_hidden = forwards[i]*(1-forwards[i])*sig_end*neurons[i][2];
                  double delta_hidden = lr*sig_hidden;
-                 neurons[i][0] = neurons[i][0] + delta_hidden;
-                 neurons[i][1] = neurons[i][1] +delta_hidden;
+                 neurons[i][0] = neurons[i][0] + delta_hidden*X[0];
+                 neurons[i][1] = neurons[i][1] + delta_hidden;
+
+                 std::cout << neurons[i][0] << " " << neurons[i][1]<< " " << neurons[i][2] << " " << out_bias << std::endl;
+
                  }
               }
          }
@@ -87,24 +93,13 @@ public:
             forwards.push_back(output);
            }
         double pred = 0;
-        for (ulong i=0 ; i < forwards.size(); i++)
-            {pred += neurons[i][2]*forwards[i]+out_bias;}
-        pred = 1/(1+exp(-pred));
+        for (ulong i=0 ; i < neurons.size(); i++)
+            {pred += neurons[i][2]*forwards[i];}
+        pred += +out_bias;
         forwards.push_back(pred);
         return forwards;
     }
 
-    void print_preds_vs_gt()
-    {
-
-        for (std::vector<double> X : array)
-        {std::vector<double> forwards = forwards_(X[0]);
-         double pred = forwards.back();
-        std::cout << "input" << X[0] << std::endl;
-        std::cout << "gt" << X[1] << std::endl;
-        std::cout << "pred" << pred << std::endl;
-        std::cout << "" << std::endl;
-    }}
 
 private:
     int epochs;
@@ -116,11 +111,24 @@ private:
 };
 
 
+void print_preds_vs_gt(std::vector<std::vector<double>> data, FcNn fc_nn)
+{
+    for (std::vector<double> X : data)
+    {std::vector<double> forwards = fc_nn.forwards_(X[0]);
+     double pred = forwards.back();
+    std::cout << "input" << X[0] << std::endl;
+    std::cout << "gt" << X[1] << std::endl;
+    std::cout << "pred" << pred << std::endl;
+    std::cout << "" << std::endl;
+}}
+
+
 int main()
 {
-    GenSigmoidalData sigmoidal_data = GenSigmoidalData(-5, 5, 50);
-    FcNn fc_nn = FcNn(15, 8, sigmoidal_data());
+    GenSigmoidalData sigmoidal_data = GenSigmoidalData(-5, 5, 100);
+    FcNn fc_nn = FcNn(20, 100, sigmoidal_data());
     fc_nn.fit();
-    fc_nn.print_preds_vs_gt();
+    GenSigmoidalData test_sigmoidal_data = GenSigmoidalData(-5, 5, 100);
+    print_preds_vs_gt(test_sigmoidal_data(), fc_nn);
 
 }
