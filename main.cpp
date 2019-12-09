@@ -4,17 +4,17 @@
 #include <vector>
 #include <math.h>
 
-class GenSigmoidalData
+class GenParabolaData
 {
 public:
-    GenSigmoidalData(int low, int high, int size)
+    GenParabolaData(int low, int high, int size)
     : random_engine_{std::random_device{}()}
     , distribution_{low, high}
 
     {
         for (int j=0 ; j < size; j++)
         {
-            numbers.push_back(std::vector<double>{double(j), distribution_(random_engine_)/10+(1/(1+exp(-(j*0.001))))});
+            numbers.push_back(std::vector<double>{double(j), double(j*j)+distribution_(random_engine_)});
         }
     }
 
@@ -35,11 +35,10 @@ public:
     FcNn(int epochs, int n_neurons, std::vector<std::vector<double>> array)
     : epochs{epochs}
     , array{array}
-    , lr{0.1}
+    , lr{0.00001}
     , n_neurons{n_neurons}
     , neurons{construct_weights()}
     , out_bias{0.1}
-
 
     {
     }
@@ -47,9 +46,12 @@ public:
     std::vector<std::vector<double>> construct_weights()
         {
         std::vector<std::vector<double>> neurons;
+        std::random_device dev;
+        std::mt19937 rng(dev());
+        std::uniform_int_distribution<std::mt19937::result_type> dist6(10,90);
         for (int j=0 ; j < n_neurons; j++)
             {
-            neurons.push_back(std::vector<double>{0.1, 0.1, 0.1});
+            neurons.push_back(std::vector<double>{double(dist6(rng))/100, double(dist6(rng))/10, double(dist6(rng))/100});
             }
         return neurons;
         }
@@ -62,17 +64,22 @@ public:
              {
              std::vector<double> forwards = forwards_(X[0]);
              double pred = forwards.back();
-             double sig_end = (X[1]-pred)*pred*(1-pred);
-             out_bias = out_bias + lr*sig_end;
+             double pred_before_lrelu = forwards[forwards.size()-2];
+             double sig_end = (X[1]-pred)*-derlrelu(pred)*derlrelu(pred_before_lrelu)/(array.size());
+             out_bias -= lr*sig_end;
              for (ulong i=0; i<neurons.size(); i++)
                  {
-                 double delta_end = lr*sig_end*forwards[i];
-                 neurons[i][2] = neurons[i][2] + delta_end;
+                 double delta_end = lr*sig_end*forwards[ulong(n_neurons)+i];
+                 neurons[i][2] -= delta_end;
 
-                 double sig_hidden = forwards[i]*(1-forwards[i])*sig_end*neurons[i][2];
+                 double out_i_before_relu = forwards[i];
+                 double sig_hidden = derlrelu(out_i_before_relu)*sig_end*neurons[i][2];
                  double delta_hidden = lr*sig_hidden;
-                 neurons[i][0] = neurons[i][0] + delta_hidden;
-                 neurons[i][1] = neurons[i][1] +delta_hidden;
+                 neurons[i][0] -= delta_hidden*X[0];
+                 neurons[i][1] -= delta_hidden;
+
+                 std::cout << neurons[i][0] << " " << neurons[i][1]<< " " << neurons[i][2] << std::endl;
+
                  }
               }
          }
@@ -81,30 +88,44 @@ public:
     std::vector<double> forwards_(double input)
     {
         std::vector<double> forwards;
+
         for (std::vector<double> neuron : neurons)
            {
-            double output = 1/(1+exp(-(input*neuron[0]+neuron[1])));
+            double output = input*neuron[0]+neuron[1];
             forwards.push_back(output);
            }
+
+        for (std::vector<double> neuron : neurons)
+           {
+            double output = lrelu(input*neuron[0]+neuron[1]);
+            forwards.push_back(output);
+           }
+
         double pred = 0;
-        for (ulong i=0 ; i < forwards.size(); i++)
-            {pred += neurons[i][2]*forwards[i]+out_bias;}
-        pred = 1/(1+exp(-pred));
+        for (ulong i=0 ; i < neurons.size(); i++)
+            {pred += neurons[i][2]*forwards[ulong(n_neurons)+i]+out_bias;}
+        forwards.push_back(pred);
+        pred = lrelu(pred);
         forwards.push_back(pred);
         return forwards;
     }
 
-    void print_preds_vs_gt()
+    double derlrelu(double x)
     {
+        if (x>0)
+        {return 1;}
+        else
+        {return 0.01;}
+    }
 
-        for (std::vector<double> X : array)
-        {std::vector<double> forwards = forwards_(X[0]);
-         double pred = forwards.back();
-        std::cout << "input" << X[0] << std::endl;
-        std::cout << "gt" << X[1] << std::endl;
-        std::cout << "pred" << pred << std::endl;
-        std::cout << "" << std::endl;
-    }}
+    double lrelu(double x)
+    {
+        if (x>0)
+        {return x;}
+        else
+        {return 0.01*x;}
+    }
+
 
 private:
     int epochs;
@@ -116,11 +137,23 @@ private:
 };
 
 
+void print_preds_vs_gt(std::vector<std::vector<double>> data, FcNn fc_nn)
+{
+    for (std::vector<double> X : data)
+    {std::vector<double> forwards = fc_nn.forwards_(X[0]);
+     double pred = forwards.back();
+    std::cout << "input" << X[0] << std::endl;
+    std::cout << "gt" << X[1] << std::endl;
+    std::cout << "pred" << pred << std::endl;
+    std::cout << "" << std::endl;
+}}
+
 int main()
 {
-    GenSigmoidalData sigmoidal_data = GenSigmoidalData(-5, 5, 50);
-    FcNn fc_nn = FcNn(15, 8, sigmoidal_data());
+    GenParabolaData parabola_data = GenParabolaData(-5, 5, 100);
+    FcNn fc_nn = FcNn(20, 2000, parabola_data());
     fc_nn.fit();
-    fc_nn.print_preds_vs_gt();
+    GenParabolaData test_parabola_data = GenParabolaData(-5, 5, 100);
+    print_preds_vs_gt(test_parabola_data(), fc_nn);
 
 }
