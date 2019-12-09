@@ -125,10 +125,10 @@ void print_preds_vs_gt(std::vector<std::vector<double>> data, FcNn fc_nn)
 
 int main()
 {
-    GenSigmoidalData sigmoidal_data = GenSigmoidalData(-5, 5, 100);
-    FcNn fc_nn = FcNn(20, 100, sigmoidal_data());
+    GenSigmoidalData sigmoidal_data = GenSigmoidalData(0, 5, 5);
+    FcNn fc_nn = FcNn(300, 20, sigmoidal_data());
     fc_nn.fit();
-    GenSigmoidalData test_sigmoidal_data = GenSigmoidalData(-5, 5, 100);
+    GenSigmoidalData test_sigmoidal_data = GenSigmoidalData(0, 5, 5);
     print_preds_vs_gt(test_sigmoidal_data(), fc_nn);
 
 }
